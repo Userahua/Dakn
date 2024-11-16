@@ -1,0 +1,301 @@
+_G.apikey = "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"
+groq = loadstring(game:HttpGet('https://raw.githubusercontent.com/ImNotDario/groq-api-roblox/refs/heads/main/loadstring'))()
+-- IMPORTANT --
+local Players = game:GetService("Players")
+active = false
+temp = 1
+whitelistplayers = {}
+isToolUseEnabled = false
+groq:SetSystemPrompt("Be friendly. Respond in under 1024 tokens (>= 2048 characters)")
+groq:SetModel("gemma-7b-it")
+local stillchatting = false
+-- CHAT --
+function chatMessage(str)
+    local TextChatService = game:GetService("TextChatService")
+    local splitnum = 64
+    local xmcasa = {}
+
+    -- Split the string into chunks of `splitnum` characters
+    for i = 1, #str, splitnum do
+        table.insert(xmcasa, "ðŸŒŸ " .. string.sub(str, i, i + splitnum - 1))
+    end
+    if not stillchatting then
+        stillchatting = true
+        -- Send each chunk as a separate chat message
+        for _, message in ipairs(xmcasa) do
+            if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+                TextChatService.TextChannels.RBXGeneral:SendAsync(message)
+            else
+                game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+            end
+            wait(5)
+        end
+        stillchatting = false
+    end
+end
+
+
+-- UI --
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local main = Rayfield:CreateWindow({
+    Name = "zegs32's AIbot hub",
+    LoadingTitle = "zegs32's AIbot hub",
+    LoadingSubtitle = "by zegs32",
+    Theme = "Amber Glow", -- DarkBlue, Green, Light, Default - more coming soon!
+
+    DisableRayfieldPrompts = false,
+
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = "aibothub", -- Create a custom folder for your hub/game
+        FileName = "AIBotHub"
+    },
+
+    Discord = {
+        Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+        Invite = "", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
+        RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+    },
+
+    KeySystem = false, -- Set this to true to use our key system
+    KeySettings = {
+        Title = "",
+        Subtitle = "",
+        Note = "", -- Use this to tell the user how to get a key
+        FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+        SaveKey = false, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+        GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+        Key = {} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+    }
+})
+main.ModifyTheme('AmberGlow')
+local ai = main:CreateTab("AI", 91187890566381)
+local whitelist = main:CreateTab("Whitelist", 131732617072026)
+local experimental = main:CreateTab("Experimental", 115831739373796)
+-- AI --
+ai:CreateToggle({
+    Name = "Enabled",
+    CurrentValue = active,
+    Flag = "enabledCheckBox",
+    Callback = function(v)
+        active = v
+    end
+})
+
+ai:CreateDropdown({
+    Name = "Model",
+    Options = {
+        "gemma2-9b-it",
+        "gemma-7b-it",
+        "llama3-groq-70b-8192-tool-use-preview",
+        "llama3-groq-8b-8192-tool-use-preview",
+        "llama-3.1-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama-3.2-11b-vision-preview",
+        "llama-3.2-90b-vision-preview",
+        "llama3-70b-8192",
+        "llama3-8b-8192"
+    },
+    CurrentOption = {"gemma-7b-it"},
+    MultipleOptions = false,
+    Flag = "modelDropdown",
+    Callback = function(op)
+        groq:SetModel(op[1])
+    end
+})
+
+ai:CreateSlider({
+    Name = "Temperature",
+    Range = {0, 2},
+    Increment = 0.01,
+    Suffix = "Î±",
+    CurrentValue = 1,
+    Flag = "tempSlider",
+    Callback = function(v)
+        temp = v
+    end
+})
+
+ai:CreateButton({
+    Name = "Reset chat history",
+    Callback = function()
+        groq:ResetChats()
+        Rayfield:Notify({
+            Title = "Chat history reset",
+            Content = "Chat history successfully reset! ",
+            Duration = 3,
+            Image = 115134032585292
+        })
+    end
+})
+-- WHITELIST --
+whitelistuser = ""
+whitelist:CreateInput({
+    Name = "User",
+    CurrentValue = "",
+    PlaceholderText = "User to whitelist/blacklist",
+    RemoveTextAfterFocusLost = false,
+    Flag = "",
+    Callback = function(v)
+        whitelistuser = v
+    end
+})
+whitelist:CreateButton({
+    Name = "Whitelist",
+    Callback = function()
+        local exists = false
+        for i,v in whitelistplayers do
+            if v == whitelistuser then
+                Rayfield:Notify({
+                    Title = "User error",
+                    Content = "User already exists in whitelisted users! ",
+                    Duration = 3,
+                    Image = 124950147392248
+                })
+                exists = true
+                break;
+            end
+        end
+        if whitelistuser:match("^%s*$") then
+            exists = true  
+        end
+        if not exists then
+            table.insert(whitelistplayers, whitelistuser)
+            Rayfield:Notify({
+                Title = "User whitelisted",
+                Content = string.format("User %s was whitelisted.", whitelistuser),
+                Duration = 3,
+                Image = 88865931128842
+            })
+        end
+    end
+})
+
+whitelist:CreateButton({
+    Name = "Reset whitelist",
+    Callback = function()
+        whitelistplayers = {}
+        Rayfield:Notify({
+            Title = "Whitelist reset",
+            Content = "Whitelist successfully reset! ",
+            Duration = 3,
+            Image = 115134032585292
+        })
+    end
+})
+whitelist:CreateButton({
+    Name = "Whitelist everyone (dangerous)",
+    Callback = function()
+        for j,whitelistuse in game:GetService("Players"):GetPlayers() do
+            local exists = false
+            local whitelistuser = whitelistuse.Name
+            for i,v in whitelistplayers do
+                if v == whitelistuser then
+                    Rayfield:Notify({
+                        Title = "User error",
+                        Content = "User already exists in whitelisted users! ",
+                        Duration = 3,
+                        Image = 124950147392248
+                    })
+                    exists = true
+                    break;
+                end
+            end
+            if whitelistuser:match("^%s*$") then
+                exists = true  
+            end
+            if not exists then
+                table.insert(whitelistplayers, whitelistuser)
+                Rayfield:Notify({
+                    Title = "User whitelisted",
+                    Content = string.format("User %s was whitelisted.", whitelistuser),
+                    Duration = 3,
+                    Image = 88865931128842
+                })
+            end
+        end
+    end
+})
+whitelist:CreateButton({
+    Name = "Blacklist",
+    Callback = function()
+        for i,v in ipairs(whitelistplayers) do
+            if v == whitelistuser then
+                Rayfield:Notify({
+                    Title = "User blacklisted",
+                    Content = string.format("User %s was blacklisted.", whitelistuser),
+                    Duration = 3,
+                    Image = 83002980114464
+                })
+                table.remove(whitelistplayers, i)
+            end
+        end
+    end
+})
+whitelist:CreateButton({
+    Name = "Print whitelisted users",
+    Callback = function()
+        print("Whitelisted users: ")
+        for i,v in ipairs(whitelistplayers) do
+            print(v)
+        end
+    end
+})
+-- EXPERIMENTAL --
+experimental:CreateLabel("Beware, experimental features are Work In Progress and may not function properly. We recommend you dont use these")
+experimental:CreateToggle({
+    Name = "experiment-tool-use",
+    CurrentValue = false,
+    Flag = "nScriptAi",
+    Callback = function(v)
+        if not isToolUseEnabled then
+            groq:CreateTool("eval", "Runs luaU (Roblox) code on the player's client.", {["code"] = {["type"] = "string", ["desc"] = "Code to execute"}}, {"code"}, function(evalsc)
+                local a = xpcall(loadstring(evalsc)(), function(e) return tostring(e) end)
+                if type(a) == "" then return a else return "" end
+            end)
+            groq:CreateTool("getrequest", "Requests web using GET", {["website"] = {["type"] = "string", ["desc"] = "URL to get"}}, {}, function(website)
+                return request({Url = website, Method = "GET"}).Body
+            end)
+            
+            Rayfield:Notify({
+                Title = "Enabled experiment-tool-use",
+                Content = "Beware, experiments are prone to breaking. tool-use notice: This is very dangerous as it lets ai run code on your client.",
+                Duration = 3,
+                Image = 115831739373796
+            })
+        end
+        isToolUseEnabled = true
+    end
+})
+-- experimental:CreateLabel("Seems like there's nothing here. Check this tab out later!")
+-- MAIN --
+local function onPlayerChatted(player, message)
+    local userIsWhitelisted = false
+    for i, v in ipairs(whitelistplayers) do
+        if v == player.Name then
+            userIsWhitelisted = true
+            break
+        end
+    end
+    if message:match("ðŸŒŸ") or message:match("#") then
+        userIsWhitelisted = false
+    end
+    if userIsWhitelisted then
+        if active then
+            local airesp = groq:RequestAI(message, 1024, temp, os.time(), "\n")
+            if airesp.AIResponse ~= nil then
+                chatMessage("AI: "..airesp.AIResponse)
+            end
+        end
+    end
+end
+for _, player in ipairs(Players:GetPlayers()) do
+    player.Chatted:Connect(function(message)
+        onPlayerChatted(player, message)
+    end)
+end
+Players.PlayerAdded:Connect(function(player)
+    player.Chatted:Connect(function(message)
+        onPlayerChatted(player, message)
+    end)
+end)
